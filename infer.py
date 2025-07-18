@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 
-from network import Classifier
+from network import Classifier, MixedClassifier
 from dataset import TestDataset
 
 
@@ -11,14 +11,15 @@ def infer(model, test_loader, device):
     correct = 0
     model.eval()
     with torch.no_grad():
-        for data, gt in test_loader:
-            data = data.to(device)
+        for cont_x, cat_x, y in test_loader:
+            cont_x, cat_x = cont_x.to(device), cat_x.to(device)
             with torch.no_grad():
-                output = model(data)
-                prob = torch.sigmoid(output)
-                predicted = (prob >= 0.5).float()
-                total += gt.size(0)
-                correct += (predicted == gt).sum().item()
+                output = model(cont_x, cat_x)
+                # prob = torch.sigmoid(output)
+                # predicted = (prob >= 0.5).float()
+                total += y.size(0)
+                _, predicted = torch.max(output, 1)
+                correct += (predicted == y).sum().item()
                 results.extend(predicted.cpu().numpy().flatten())
         print(f"Accuracy: {correct / total * 100:.2f}%")
 
@@ -36,11 +37,15 @@ def main():
     )
 
     # Initialize model
-    input_size = test_dataset[0][0].shape[0]  # 自动获取输入特征维度
-    model = Classifier(input_size).to(device)
+    # input_size = test_dataset[0][0].shape[0]  # 自动获取输入特征维度
+    # model = Classifier(input_size).to(device)
+    model = MixedClassifier(
+        num_cont=len(test_dataset.continuous_cols),
+        cat_cardinalities=test_dataset.get_info()[1],
+    ).to(device)
 
     # Load the trained model
-    model.load_state_dict(torch.load("checkpoint/best_model.pth"))
+    model.load_state_dict(torch.load(".cache/best_model.pth"))
     model.eval()
 
     # Perform inference

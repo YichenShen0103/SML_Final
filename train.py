@@ -3,12 +3,10 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 
 from dataset import TrainDataset
-from network import Classifier
+from network import Classifier, MixedClassifier
 
 
-def train(
-    model, epochs, train_loader, val_loader, device, criterion, optimizer, scheduler
-):
+def train(model, epochs, train_loader, val_loader, device, criterion, optimizer):
     best_val_loss = float("inf")
     patience = 100
     patience_counter = 0
@@ -17,32 +15,31 @@ def train(
     for epoch in range(epochs):
         model.train()
         train_loss = 0.0
-        for data, label in train_loader:
+        for cont_x, cat_x, y in train_loader:
+            cont_x, cat_x, y = cont_x.to(device), cat_x.to(device), y.to(device)
             optimizer.zero_grad()
-            data, label = data.to(device), label.to(device)
-            output = model(data)
-            loss = criterion(output, label)
-            train_loss += loss.item()
+            output = model(cont_x, cat_x)
+            loss = criterion(output, y)
             loss.backward()
             optimizer.step()
+            train_loss += loss.item()
+        # scheduler.step()
 
         with torch.no_grad():
             model.eval()
             val_loss = 0.0
             val_total = 0
             val_correct = 0
-            for data, label in val_loader:
-                data, label = data.to(device), label.to(device)
-                output = model(data)
-                loss = criterion(output, label)
+            for cont_x, cat_x, y in val_loader:
+                cont_x, cat_x, y = cont_x.to(device), cat_x.to(device), y.to(device)
+                output = model(cont_x, cat_x)
+                loss = criterion(output, y)
                 val_loss += loss.item()
 
-                val_total += label.size(0)
-                prob = torch.sigmoid(output)
-                predicted = (prob >= 0.5).float()
-                correct = (predicted == label).sum().item()
+                val_total += y.size(0)
+                _, predicted = torch.max(output, 1)
+                correct = (predicted == y).sum().item()
                 val_correct += correct
-            # scheduler.step(val_loss)
 
         if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
             print(
@@ -51,7 +48,7 @@ def train(
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0
-            torch.save(model.state_dict(), "checkpoint/best_model.pth")
+            torch.save(model.state_dict(), ".cache/best_model.pth")
         else:
             patience_counter += 1
             if patience_counter >= patience:
@@ -61,7 +58,7 @@ def train(
 
 def main():
     # hyperparameters
-    epochs = 10000
+    epochs = 500
 
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -82,22 +79,28 @@ def main():
 
     # Initialize network
     print("Initializing network...")
-    input_size = dataset[0][0].shape[0]  # 自动获取输入特征维度
-    model = Classifier(input_size).to(device)
+    # input_size = dataset[0][0].shape[0]
+    # model = Classifier(input_size).to(device)
+    model = MixedClassifier(
+        num_cont=len(dataset.continuous_cols),
+        cat_cardinalities=dataset.get_info()[1],
+    ).to(device)
 
     # criterion = nn.BCELoss()
-    criterion = nn.BCEWithLogitsLoss()  # 使用 BCEWithLogitsLoss 处理 Sigmoid
+    # criterion = nn.BCEWithLogitsLoss()  # 使用 BCEWithLogitsLoss 处理 Sigmoid
+    criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(
         model.parameters(), lr=0.001, weight_decay=1e-5
     )  # Example optimizer
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=5, verbose=True
-    )
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer, mode="min", factor=0.5, patience=10, verbose=True
+    # )
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    #     optimizer, T_max=500, eta_min=1e-5
+    # )
 
     # Print model architecture
-    train(
-        model, epochs, train_loader, val_loader, device, criterion, optimizer, scheduler
-    )
+    train(model, epochs, train_loader, val_loader, device, criterion, optimizer)
 
 
 if __name__ == "__main__":
