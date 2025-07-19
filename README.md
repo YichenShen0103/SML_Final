@@ -73,9 +73,9 @@ We provide a inference and evaluation script to infer from the testing set and e
 
 Since the dataset is too small for deep learning, which means the performance will be very random, we train the model for 1200 times, and choose the one with best performance.
 
-|            | Training Loss | Validation Loss | Validation Accuracy | Test Accuracy |
-| ---------- | ------------- | --------------- | ------------------- | ------------- |
-| Best model |               |                 |                     |               |
+|            | Training Loss      | Validation Loss    | Validation Accuracy | Test Accuracy |
+| ---------- | ------------------ | ------------------ | ------------------- | ------------- |
+| Best model | 0.3174853064119816 | 0.5412161201238632 | 77.78%              | 78.91%        |
 
 
 

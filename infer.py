@@ -45,7 +45,8 @@ def main():
     ).to(device)
 
     # Load the trained model
-    model.load_state_dict(torch.load(".cache/best_model.pth"))
+    # model.load_state_dict(torch.load(".cache/best_model.pth"))
+    model.load_state_dict(torch.load("checkpoint/final_LTS.pth", map_location=device))
     model.eval()
 
     # Perform inference
