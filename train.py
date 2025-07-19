@@ -2,14 +2,18 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 
+# import matplotlib.pyplot as plt
+
 from dataset import TrainDataset
-from network import Classifier, MixedClassifier
+from network import MixedClassifier
 
 
 def train(model, epochs, train_loader, val_loader, device, criterion, optimizer):
     best_val_loss = float("inf")
     patience = 100
     patience_counter = 0
+    training_loss = []
+    testing_loss = []
     print(f"Training model for {epochs} epochs...")
 
     for epoch in range(epochs):
@@ -41,6 +45,8 @@ def train(model, epochs, train_loader, val_loader, device, criterion, optimizer)
                 correct = (predicted == y).sum().item()
                 val_correct += correct
 
+        training_loss.append(train_loss / len(train_loader))
+        testing_loss.append(val_loss / len(val_loader))
         if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
             print(
                 f"Epoch [{epoch+1}]/[{epochs}], Train Loss: {train_loss / len(train_loader)}, Val Loss: {val_loss / len(val_loader)}, Accuracy: {val_correct / val_total * 100:.2f}%"
@@ -54,6 +60,8 @@ def train(model, epochs, train_loader, val_loader, device, criterion, optimizer)
             if patience_counter >= patience:
                 print("Early stopping triggered.")
                 break
+
+    return training_loss, testing_loss
 
 
 def main():
@@ -79,19 +87,15 @@ def main():
 
     # Initialize network
     print("Initializing network...")
-    # input_size = dataset[0][0].shape[0]
-    # model = Classifier(input_size).to(device)
     model = MixedClassifier(
         num_cont=len(dataset.continuous_cols),
         cat_cardinalities=dataset.get_info()[1],
     ).to(device)
 
     # criterion = nn.BCELoss()
-    # criterion = nn.BCEWithLogitsLoss()  # 使用 BCEWithLogitsLoss 处理 Sigmoid
+    # criterion = nn.BCEWithLogitsLoss()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=0.001, weight_decay=1e-5
-    )  # Example optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     #     optimizer, mode="min", factor=0.5, patience=10, verbose=True
     # )
@@ -100,7 +104,24 @@ def main():
     # )
 
     # Print model architecture
-    train(model, epochs, train_loader, val_loader, device, criterion, optimizer)
+    training_loss, testing_loss = train(
+        model, epochs, train_loader, val_loader, device, criterion, optimizer
+    )
+
+    # Experiment
+    # plt.plot()
+    # # 自动生成 X 轴坐标（索引）
+    # x = list(range(len(training_loss)))
+
+    # # 绘图
+    # plt.plot(x, training_loss, marker="o")  # 加上 marker='o' 显示点
+    # plt.plot(x, testing_loss, marker="x")  # 加上 marker='x' 显示点
+    # plt.legend(["Training Loss", "Validation Loss"])
+    # plt.title("Line Chart from List")
+    # plt.xlabel("Epochs")
+    # plt.ylabel("Value")
+    # plt.grid(True)
+    # plt.savefig("assets/overfitting.png")
 
 
 if __name__ == "__main__":

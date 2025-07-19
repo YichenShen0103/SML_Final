@@ -4,7 +4,7 @@ import shutil
 import os
 
 # 训练-评测执行次数
-N = 500
+N = 1200
 
 # 模型默认保存路径（train.py保存的路径）
 MODEL_PATH = ".cache/best_model.pth"

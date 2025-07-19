@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 
-from network import Classifier, MixedClassifier
+from network import MixedClassifier
 from dataset import TestDataset
 
 
