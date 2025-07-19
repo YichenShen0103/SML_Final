@@ -23,7 +23,7 @@ def infer(model, test_loader, device):
                 results.extend(predicted.cpu().numpy().flatten())
         print(f"Accuracy: {correct / total * 100:.2f}%")
 
-    return [int(x) for x in results]  # Convert predictions to integers
+    return [int(x + 1) for x in results]  # Convert predictions to integers
 
 
 def main():
